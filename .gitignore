@@ -1,0 +1,5 @@
+data/
+*.edgelist
+*.txt
+*.csv
+__pycache__/

@@ -1,8 +1,16 @@
 import networkx as nx
-import community as community_louvain  # python-louvain
+import community as community_louvain   # python-louvain
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import time
+from sklearn.cluster import KMeans
+from node2vec import Node2Vec
+
+try:
+    from infomap import Infomap
+except ImportError:
+    Infomap = None
 
 # -------------------- Louvain & Metrics --------------------
 
@@ -138,3 +146,52 @@ def save_cluster_size_plot(cluster_sizes, save_path="results/facebook_cluster_si
     plt.savefig(save_path, dpi=300)
     plt.close()
     print(f"Cluster size plot saved to {save_path}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def infomap_communities(G: nx.Graph, save_path: str = None):
+    """Placeholder for Infomap to allow comparison to proceed."""
+    print("Infomap is currently SKIPPED due to installation issues.")
+    return None, 0.0
+
+def node2vec_kmeans_communities(G: nx.Graph, n_clusters: int, dimensions: int = 64, save_path: str = None):
+    """
+    Apply Node2Vec for embedding followed by KMeans clustering.
+    """
+    start_time = time.time()
+    
+    # 1. Generate Embeddings (Node2Vec)
+    G_str = nx.relabel_nodes(G, lambda x: str(x), copy=True) 
+    
+    node2vec = Node2Vec(G_str, dimensions=dimensions, walk_length=30, num_walks=200, workers=4)
+    model = node2vec.fit(window=10, min_count=1, batch_words=4)
+    
+    nodes = list(G_str.nodes())
+    embeddings = [model.wv[node] for node in nodes]
+    
+    # 2. Cluster Embeddings (KMeans)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(embeddings)
+
+    # 3. Map cluster labels back to a partition dictionary
+    partition = {int(node): label for node, label in zip(nodes, cluster_labels)}
+    runtime = time.time() - start_time
+    
+    print(f"Node2Vec + KMeans detected {len(set(partition.values()))} communities. Runtime: {runtime:.2f}s")
+    
+    if save_path:
+        # Assumes save_node_community_mapping is defined in the original file
+        save_node_community_mapping(partition, save_path) 
+        
+    return partition, runtime
